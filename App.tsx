@@ -722,89 +722,64 @@ const App: React.FC = () => {
   // --- UI COMPONENTS ---
   if (!currentUser) {
     return (
-      <div className="fixed inset-0 h-[100dvh] mesh-bg flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div className="fixed inset-0 h-[100dvh] mesh-bg flex flex-col items-center justify-center p-4 overflow-hidden">
         {/* Background Accents - Optimized for non-overflow */}
         <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-sky-500/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="w-full max-w-sm flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-700 relative z-10 max-h-full">
-          <div className="text-center space-y-4">
+        <div className="w-full max-w-sm flex flex-col items-center justify-center space-y-4 sm:space-y-8 animate-in fade-in zoom-in duration-700 relative z-10 max-h-full">
+          <div className="text-center space-y-2">
              {/* Logo limpa e centralizada sem o contorno azul claro */}
-             <div className="w-40 h-40 sm:w-56 sm:h-56 mx-auto flex items-center justify-center overflow-hidden">
+             <div className="w-28 h-28 sm:w-48 sm:h-48 mx-auto flex items-center justify-center overflow-hidden">
                 <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
              </div>
              <div>
-               <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter uppercase italic">
+               <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tighter uppercase italic">
                  BARBER<span className="text-sky-400 bg-clip-text">CASH</span>
                </h1>
                <div className="h-1 w-10 bg-sky-500 mx-auto mt-2 rounded-full opacity-50" />
-               <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">SISTEMA FINANCEIRO</p>
+               <p className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">SISTEMA FINANCEIRO</p>
              </div>
           </div>
 
-          <form onSubmit={handleLogin} className="glass-card w-full p-6 sm:p-8 rounded-[36px] sm:rounded-[48px] shadow-2xl space-y-6 relative overflow-hidden">
-             <div className="space-y-1">
-                <h2 className="text-lg sm:text-xl font-black text-white">Bem-vindo!</h2>
+          <form onSubmit={handleLogin} className="glass-card w-full p-6 sm:p-8 rounded-[36px] sm:rounded-[48px] shadow-2xl space-y-4 relative overflow-hidden">
+             <div className="space-y-1 text-center sm:text-left">
+                <h2 className="text-lg sm:text-xl font-black text-white">BEM-VINDO!</h2>
                 <p className="text-[10px] text-slate-400 font-medium">Faça login para gerenciar o caixa.</p>
              </div>
 
-             <div className="space-y-4">
-                <div className="space-y-1.5">
-                   <label className="text-[8px] font-black text-slate-500 uppercase ml-3 tracking-widest">USUÁRIO</label>
-                   <div className="flex items-center bg-slate-950/50 border border-slate-800 rounded-2xl sm:rounded-3xl px-5 input-glow transition-all group/input">
-                      <UserIcon size={16} className="text-slate-600 group-focus-within/input:text-sky-500 transition-colors" />
-                      <input 
-                        type="text" 
-                        required 
-                        value={loginData.username} 
-                        onChange={e => setLoginData(p => ({...p, username: e.target.value}))} 
-                        className="w-full bg-transparent py-4 sm:py-5 px-3 text-sm font-bold text-white outline-none placeholder:text-slate-700" 
-                        placeholder="Nome de usuário" 
-                      />
-                   </div>
-                </div>
-                <div className="space-y-1.5">
-                   <label className="text-[8px] font-black text-slate-500 uppercase ml-3 tracking-widest">SENHA</label>
-                   <div className="flex items-center bg-slate-950/50 border border-slate-800 rounded-2xl sm:rounded-3xl px-5 pr-3 input-glow transition-all group/input">
-                      <Key size={16} className="text-slate-600 group-focus-within/input:text-sky-500 transition-colors" />
-                      <input 
-                        type={showPassword ? "text" : "password"} 
-                        required 
-                        value={loginData.password} 
-                        onChange={e => setLoginData(p => ({...p, password: e.target.value}))} 
-                        className="w-full bg-transparent py-4 sm:py-5 px-3 text-sm font-bold text-white outline-none placeholder:text-slate-700 tracking-widest" 
-                        placeholder="••••••••" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowPassword(!showPassword)} 
-                        className="p-2 text-slate-600 hover:text-sky-500 transition-all active:scale-75"
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                   </div>
-                </div>
+             <div className="space-y-3">
+               <div>
+                  <div className="relative group">
+                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-500 transition-colors" size={18} />
+                    <input type="text" placeholder="USUÁRIO" value={loginData.username} onChange={(e) => setLoginData({...loginData, username: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800/50 p-3.5 pl-12 rounded-2xl text-xs sm:text-sm font-bold text-white outline-none focus:border-sky-500 focus:bg-slate-950 transition-all placeholder:text-slate-600" />
+                  </div>
+               </div>
+               
+               <div>
+                  <div className="relative group">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-500 transition-colors" size={18} />
+                    <input type={showPassword ? "text" : "password"} placeholder="SENHA" value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800/50 p-3.5 pl-12 rounded-2xl text-xs sm:text-sm font-bold text-white outline-none focus:border-sky-500 focus:bg-slate-950 transition-all placeholder:text-slate-600" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+               </div>
              </div>
 
              <div className="flex items-center justify-between px-1">
-                <button 
-                  type="button" 
-                  onClick={() => setRememberMe(!rememberMe)} 
-                  className="flex items-center gap-2 group/check"
-                >
-                   <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-sky-600 border-sky-600 shadow-lg shadow-sky-600/20' : 'border-slate-800 bg-slate-950'}`}>
-                     {rememberMe && <Check size={12} className="text-white" strokeWidth={4} />}
-                   </div>
-                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Lembrar</span>
-                </button>
+               <label className="flex items-center gap-2 cursor-pointer group">
+                 <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${rememberMe ? 'bg-sky-500 border-sky-500' : 'border-slate-700 group-hover:border-slate-500'}`}>
+                   {rememberMe && <Check size={10} className="text-white" />}
+                 </div>
+                 <input type="checkbox" className="hidden" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+                 <span className="text-[10px] sm:text-xs font-bold text-slate-500 group-hover:text-slate-400 transition-colors uppercase">LEMBRAR-ME</span>
+               </label>
              </div>
 
-             <button 
-                type="submit" 
-                className="w-full bg-sky-600 text-white font-black py-5 sm:py-6 rounded-2xl sm:rounded-3xl transition-all shadow-xl shadow-sky-900/20 active:scale-95 flex items-center justify-center gap-3 shimmer group/btn relative"
-              >
-                <LogIn size={18} className="group-hover/btn:translate-x-1 transition-transform" />
-                <span className="uppercase tracking-[0.2em] text-[10px] sm:text-xs font-black">ACESSAR PAINEL</span>
+             <button type="submit" className="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-sky-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 group">
+               <span className="uppercase text-[10px] sm:text-xs tracking-widest">ENTRAR NO SISTEMA</span>
+               <LogIn size={16} className="group-hover:translate-x-1 transition-transform" />
              </button>
           </form>
 
