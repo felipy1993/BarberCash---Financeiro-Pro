@@ -20,5 +20,9 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
+
+# Firebase
+.firebase
+firebase-debug.log
+.firebaserc

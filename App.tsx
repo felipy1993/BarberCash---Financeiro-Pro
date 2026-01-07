@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { testFirebaseConnection } from './services/firebase';
 import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole } from './types';
 import { TransactionForm } from './components/TransactionForm';
 import { 
@@ -1075,6 +1076,12 @@ const App: React.FC = () => {
                  </div>
               </div>
               <button onClick={handleLogout} className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-black py-6 rounded-3xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg border border-rose-500/10"><LogOut size={20} /><span className="uppercase text-[10px] tracking-widest">SAIR DO SISTEMA</span></button>
+              
+              <div className="pt-4 border-t border-white/5">
+                <button onClick={testFirebaseConnection} className="w-full bg-slate-950 text-slate-600 hover:text-sky-500 font-bold py-4 rounded-2xl text-[9px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
+                   <Sparkles size={14} /> Testar Conexão Firebase
+                </button>
+              </div>
             </div>
           </div>
         </div>
