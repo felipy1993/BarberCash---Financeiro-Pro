@@ -58,7 +58,10 @@ import {
   Lock,
   Fingerprint,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Maximize2,
+  Minimize2,
+  Smartphone
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -178,6 +181,47 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('barber_sync_enabled');
     return saved ? JSON.parse(saved) : true;
   });
+
+  // --- PWA & FULLSCREEN STATES ---
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      alert('Para instalar:\n\nNo Android: Toque em menu (3 pontos) -> "Adicionar à tela inicial"\n\nNo iPhone: Toque em Compartilhar -> "Adicionar à Tela de Início"');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+  };
 
   // Carregar dados do Firebase na inicialização
   useEffect(() => {
@@ -1261,6 +1305,35 @@ const App: React.FC = () => {
                 <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl transition-all group-active:scale-110"><Lock size={24} /></div>
                 <div className="text-left"><p className="font-black text-sm uppercase">ALTERAR SENHA</p><p className="text-[10px] text-slate-500 font-bold uppercase">Trocar minha senha de acesso</p></div>
               </button>
+
+              <div className="p-6 bg-slate-950 rounded-[32px] border border-white/5 space-y-4 shadow-inner">
+                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">APLICATIVO</p>
+                 
+                 <div className="flex items-center justify-between bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                    <div className="flex items-center gap-3">
+                       {isFullscreen ? <Minimize2 size={18} className="text-sky-500" /> : <Maximize2 size={18} className="text-slate-600" />}
+                       <div>
+                          <p className="text-[10px] font-black text-white uppercase">TELA CHEIA</p>
+                          <p className="text-[8px] text-slate-500 font-bold uppercase">{isFullscreen ? 'Modo Imersivo Ativo' : 'Modo Janela'}</p>
+                       </div>
+                    </div>
+                    <button 
+                      onClick={toggleFullscreen} 
+                      className={`w-10 h-6 rounded-full p-1 transition-colors ${isFullscreen ? 'bg-sky-600' : 'bg-slate-700'}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${isFullscreen ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                 </div>
+
+                 <button 
+                   onClick={handleInstallClick}
+                   disabled={!deferredPrompt}
+                   className={`w-full bg-slate-900 border border-slate-800 font-black py-4 rounded-2xl text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 ${!deferredPrompt ? 'text-slate-600 opacity-50 cursor-not-allowed' : 'text-emerald-500 hover:bg-slate-800'}`}
+                 >
+                    <Smartphone size={14} /> 
+                    {deferredPrompt ? 'INSTALAR NO CELULAR / PC' : 'JÁ INSTALADO / NAVEGADOR'}
+                 </button>
+              </div>
 
               <div className="p-6 bg-slate-950 rounded-[32px] border border-white/5 space-y-4 shadow-inner">
                  <div className="flex items-center justify-between">

@@ -1,0 +1,21 @@
+{
+  "name": "BarberCash Pro",
+  "short_name": "BarberCash",
+  "description": "Sistema Financeiro para Barbearia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
