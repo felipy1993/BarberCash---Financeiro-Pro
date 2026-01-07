@@ -57,7 +57,7 @@ import {
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
-const LOGO_URL = "https://lh3.googleusercontent.com/d/1nYJpfFWzEmie-wifhjC72BRi0pxb7wkS";
+const LOGO_URL = "/assets/logo.png";
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 const getFirstDayOfMonthStr = () => {
@@ -621,7 +621,8 @@ const App: React.FC = () => {
       <header className="px-6 pt-10 pb-4 sticky top-0 bg-slate-950/90 backdrop-blur-xl z-40 flex justify-between items-center border-b border-white/5">
         <div className="flex items-center gap-4">
            <div className="w-10 h-10 bg-sky-600 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden border border-white/10">
-              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
+              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+              <Scissors size={20} className="text-white hidden" />
            </div>
            <div>
              <h1 className="text-lg font-black text-white uppercase leading-none">BARBER<span className="text-sky-500">CASH</span></h1>
@@ -856,7 +857,7 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            <div className="bg-slate-900 border border-white/5 p-6 rounded-[40px] h-[260px] relative shadow-lg">
+            <div className="bg-slate-900 border border-white/5 p-6 rounded-[40px] relative shadow-lg" style={{ minHeight: '260px', height: '260px' }}>
                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
                     { name: 'ENTRADAS', val: summary.monthIncome, fill: '#10b981' },
