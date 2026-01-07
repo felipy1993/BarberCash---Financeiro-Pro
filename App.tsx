@@ -1,6 +1,18 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { testFirebaseConnection } from './services/firebase';
+import { 
+  testFirebaseConnection,
+  syncAllDataToFirebase,
+  loadAllDataFromFirebase,
+  saveUser,
+  saveTransaction,
+  saveProduct,
+  saveServiceConfig,
+  saveCardFees,
+  deleteUser as deleteUserFromFirebase,
+  deleteProduct as deleteProductFromFirebase,
+  deleteTransaction as deleteTransactionFromFirebase
+} from './services/firebase';
 import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole } from './types';
 import { TransactionForm } from './components/TransactionForm';
 import { 
@@ -44,7 +56,9 @@ import {
   Pencil,
   CreditCard,
   Lock,
-  Fingerprint
+  Fingerprint,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -143,6 +157,7 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<string | null>(null);
 
@@ -155,6 +170,63 @@ const App: React.FC = () => {
   const [prodPurchasePrice, setProdPurchasePrice] = useState<string>('');
   const [prodProfitMargin, setProdProfitMargin] = useState<string>('');
   const [prodPrice, setProdPrice] = useState<string>('');
+
+  // --- FIREBASE SYNC STATES ---
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [syncEnabled, setSyncEnabled] = useState(() => {
+    const saved = localStorage.getItem('barber_sync_enabled');
+    return saved ? JSON.parse(saved) : true;
+  });
+
+  // Carregar dados do Firebase na inicialização
+  useEffect(() => {
+    const loadDataFromFirebase = async () => {
+      if (!syncEnabled || !currentUser) return;
+      
+      try {
+        console.log('📥 Carregando dados do Firebase...');
+        const data = await loadAllDataFromFirebase();
+        
+        // Atualizar estados apenas se houver dados no Firebase
+        if (data.users.length > 0) {
+          setUsers(data.users);
+          localStorage.setItem('barber_users', JSON.stringify(data.users));
+        }
+        
+        if (data.transactions.length > 0) {
+          setTransactions(data.transactions);
+          localStorage.setItem('barber_transactions', JSON.stringify(data.transactions));
+        }
+        
+        if (data.products.length > 0) {
+          setProducts(data.products);
+          localStorage.setItem('barber_products', JSON.stringify(data.products));
+        }
+        
+        if (data.serviceConfig) {
+          setServiceConfig(data.serviceConfig);
+          localStorage.setItem('barber_service_config', JSON.stringify(data.serviceConfig));
+        }
+        
+        if (data.cardFees) {
+          setCardFees(data.cardFees);
+          localStorage.setItem('barber_card_fees', JSON.stringify(data.cardFees));
+        }
+        
+        setLastSyncTime(new Date());
+        console.log('✅ Dados carregados do Firebase com sucesso!');
+      } catch (error) {
+        console.error('❌ Erro ao carregar dados do Firebase:', error);
+        showToast('ERRO AO CARREGAR DADOS DO FIREBASE');
+      }
+    };
+
+    // Carregar apenas uma vez quando o usuário faz login
+    if (currentUser && syncEnabled) {
+      loadDataFromFirebase();
+    }
+  }, [currentUser?.id]); // Executa apenas quando o usuário muda
 
   useEffect(() => {
     if (editingProduct) {
@@ -186,11 +258,45 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => { localStorage.setItem('barber_users', JSON.stringify(users)); }, [users]);
-  useEffect(() => { localStorage.setItem('barber_transactions', JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem('barber_products', JSON.stringify(products)); }, [products]);
-  useEffect(() => { localStorage.setItem('barber_service_config', JSON.stringify(serviceConfig)); }, [serviceConfig]);
-  useEffect(() => { localStorage.setItem('barber_card_fees', JSON.stringify(cardFees)); }, [cardFees]);
+  // Salvar no localStorage e Firebase
+  useEffect(() => {
+    localStorage.setItem('barber_users', JSON.stringify(users));
+    if (syncEnabled && currentUser) {
+      users.forEach(user => saveUser(user).catch(console.error));
+    }
+  }, [users, syncEnabled, currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_transactions', JSON.stringify(transactions));
+    if (syncEnabled && currentUser) {
+      transactions.forEach(transaction => saveTransaction(transaction).catch(console.error));
+    }
+  }, [transactions, syncEnabled, currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_products', JSON.stringify(products));
+    if (syncEnabled && currentUser) {
+      products.forEach(product => saveProduct(product).catch(console.error));
+    }
+  }, [products, syncEnabled, currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_service_config', JSON.stringify(serviceConfig));
+    if (syncEnabled && currentUser) {
+      saveServiceConfig(serviceConfig).catch(console.error);
+    }
+  }, [serviceConfig, syncEnabled, currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_card_fees', JSON.stringify(cardFees));
+    if (syncEnabled && currentUser) {
+      saveCardFees(cardFees).catch(console.error);
+    }
+  }, [cardFees, syncEnabled, currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_sync_enabled', JSON.stringify(syncEnabled));
+  }, [syncEnabled]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -231,8 +337,19 @@ const App: React.FC = () => {
       return [{ ...data, amount, id: Math.random().toString(36).substring(2, 11) }, ...prev];
     });
     setIsFormOpen(false);
+    setEditingTransaction(null);
     showToast('REGISTRO SALVO!');
   }, [cardFees]);
+
+  const handleDeleteTransaction = (id: string) => {
+    if (confirm('TEM CERTEZA QUE DESEJA EXCLUIR ESTE LANÇAMENTO?')) {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      if (syncEnabled) {
+        deleteTransactionFromFirebase(id).catch(console.error);
+      }
+      showToast('LANÇAMENTO EXCLUÍDO!');
+    }
+  };
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,9 +376,40 @@ const App: React.FC = () => {
     showToast(editingProduct ? 'PRODUTO ATUALIZADO!' : 'PRODUTO SALVO!');
   };
 
+  const handleManualSync = async () => {
+    if (!currentUser || !syncEnabled) return;
+    
+    try {
+      setIsSyncing(true);
+      showToast('SINCRONIZANDO COM A NUVEM...');
+      
+      await syncAllDataToFirebase({
+        users,
+        transactions,
+        products,
+        serviceConfig,
+        cardFees
+      });
+      
+      setLastSyncTime(new Date());
+      showToast('SINCRONIZAÇÃO CONCLUÍDA!');
+    } catch (error) {
+      console.error(error);
+      showToast('ERRO NA SINCRONIZAÇÃO');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleDeleteProduct = (id: string) => {
     if (confirm('TEM CERTEZA QUE DESEJA EXCLUIR ESTE PRODUTO?')) {
+      const prodToDelete = products.find(p => p.id === id);
       setProducts(prev => prev.filter(p => p.id !== id));
+      
+      if (syncEnabled && prodToDelete) {
+        deleteProductFromFirebase(id).catch(console.error);
+      }
+      
       showToast('PRODUTO EXCLUÍDO!');
     }
   };
@@ -334,9 +482,20 @@ const App: React.FC = () => {
     showToast('USUÁRIO CADASTRADO!');
   };
 
+  const handleDeleteUser = (userId: string) => {
+    if (confirm('TEM CERTEZA QUE DESEJA REMOVER ESTE FUNCIONÁRIO?')) {
+      setUsers(prev => prev.filter(usr => usr.id !== userId));
+      if (syncEnabled) {
+        deleteUserFromFirebase(userId).catch(console.error);
+      }
+      showToast('USUÁRIO REMOVIDO!');
+    }
+  };
+
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    
     if (newPasswordData.current !== currentUser.password) {
       alert('SENHA ATUAL INCORRETA!');
       return;
@@ -346,20 +505,25 @@ const App: React.FC = () => {
       return;
     }
     if (newPasswordData.new.length < 3) {
-      alert('SENHA MUITO CURTA!');
+      alert('SENHA MUITO CURTA! MÍNIMO 3 CARACTERES.');
       return;
     }
 
+    // Atualiza a lista de usuários
     const updatedUsers = users.map(u => u.id === currentUser.id ? { ...u, password: newPasswordData.new } : u);
     setUsers(updatedUsers);
     
+    // Atualiza o usuário atual
     const updatedUser = { ...currentUser, password: newPasswordData.new };
     setCurrentUser(updatedUser);
+    
+    // Atualiza ambos os storages para garantir que a sessão seja mantida
     localStorage.setItem('barber_session', JSON.stringify(updatedUser));
+    sessionStorage.setItem('barber_session', JSON.stringify(updatedUser));
 
     setIsPasswordModalOpen(false);
     setNewPasswordData({ current: '', new: '', confirm: '' });
-    showToast('SENHA ATUALIZADA!');
+    showToast('SENHA ATUALIZADA COM SUCESSO!');
   };
 
   // --- ANALYTICS CALCULATIONS ---
@@ -748,16 +912,36 @@ const App: React.FC = () => {
              <div className="space-y-3 pb-24">
               {filteredTransactions.length > 0 ? filteredTransactions.map((t) => (
                 <div key={t.id} className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-[32px] flex items-center justify-between group transition-all hover:bg-slate-900/60">
-                  <div className="flex items-center gap-4 overflow-hidden">
+                  <div className="flex items-center gap-4 overflow-hidden flex-1">
                     <div className={`p-3.5 rounded-2xl ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>{t.type === 'INCOME' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}</div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-bold text-slate-100 text-sm uppercase truncate">{t.description}</p>
-                      <p className="text-[9px] text-slate-500 font-black mt-1 uppercase">{t.date.split('-').reverse().join('/')} • {t.category}</p>
+                      <p className="text-[9px] text-slate-500 font-black mt-1 uppercase truncate">{t.date.split('-').reverse().join('/')} • {t.category}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-black text-base flex-shrink-0 ${t.type === 'INCOME' ? 'text-emerald-400' : 'text-rose-400'}`}>{t.type === 'INCOME' ? '+' : '-'} R$ {t.amount.toFixed(2)}</p>
-                    <p className="text-[8px] font-black text-slate-700 uppercase mt-1">{t.paymentMethod}</p>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className={`font-black text-base flex-shrink-0 ${t.type === 'INCOME' ? 'text-emerald-400' : 'text-rose-400'}`}>{t.type === 'INCOME' ? '+' : '-'} R$ {t.amount.toFixed(2)}</p>
+                      <p className="text-[8px] font-black text-slate-700 uppercase mt-1">{t.paymentMethod}</p>
+                    </div>
+                    
+                    {currentUser.role === 'ADMIN' && (
+                      <div className="flex flex-col gap-1 pl-2 border-l border-slate-800">
+                        <button 
+                          onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
+                          className="p-1.5 text-slate-600 hover:text-sky-500 active:scale-75 transition-all bg-slate-950 rounded-lg"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTransaction(t.id)}
+                          className="p-1.5 text-slate-600 hover:text-rose-500 active:scale-75 transition-all bg-slate-950 rounded-lg"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )) : (
@@ -958,7 +1142,12 @@ const App: React.FC = () => {
       )}
 
       {isFormOpen && (
-        <TransactionForm onSave={handleSaveTransaction} onClose={() => setIsFormOpen(false)} categories={categories} initialData={null} />
+        <TransactionForm 
+          onSave={handleSaveTransaction} 
+          onClose={() => { setIsFormOpen(false); setEditingTransaction(null); }} 
+          categories={categories} 
+          initialData={editingTransaction} 
+        />
       )}
 
       {isProductModalOpen && (
@@ -1068,6 +1257,52 @@ const App: React.FC = () => {
                 <div className="text-left"><p className="font-black text-sm uppercase">TAXAS DE CARTÃO</p><p className="text-[10px] text-slate-500 font-bold uppercase">Configurar descontos de maquininha</p></div>
               </button>
 
+              <button onClick={() => { setIsSettingsOpen(false); setIsPasswordModalOpen(true); }} className="w-full bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-3xl flex items-center gap-4 transition-all shadow-md active:scale-95">
+                <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl transition-all group-active:scale-110"><Lock size={24} /></div>
+                <div className="text-left"><p className="font-black text-sm uppercase">ALTERAR SENHA</p><p className="text-[10px] text-slate-500 font-bold uppercase">Trocar minha senha de acesso</p></div>
+              </button>
+
+              <div className="p-6 bg-slate-950 rounded-[32px] border border-white/5 space-y-4 shadow-inner">
+                 <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">NUVEM & SINCRONIZAÇÃO</p>
+                    <div className="flex items-center gap-2">
+                       <span className={`w-2 h-2 rounded-full ${syncEnabled ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}></span>
+                       <span className="text-[9px] font-bold text-slate-500 uppercase">{syncEnabled ? 'ONLINE' : 'OFFLINE'}</span>
+                    </div>
+                 </div>
+                 
+                 <div className="flex items-center justify-between bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                    <div className="flex items-center gap-3">
+                       <Cloud size={18} className={syncEnabled ? "text-sky-500" : "text-slate-600"} />
+                       <div>
+                          <p className="text-[10px] font-black text-white uppercase">SYNC AUTOMÁTICO</p>
+                          <p className="text-[8px] text-slate-500 font-bold uppercase">Backup em tempo real</p>
+                       </div>
+                    </div>
+                    <button 
+                      onClick={() => setSyncEnabled(!syncEnabled)} 
+                      className={`w-10 h-6 rounded-full p-1 transition-colors ${syncEnabled ? 'bg-sky-600' : 'bg-slate-700'}`}
+                    >
+                      <div className={`w-4 h-4 bg-white rounded-full transition-transform ${syncEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                 </div>
+
+                 <button 
+                   onClick={handleManualSync}
+                   disabled={isSyncing || !syncEnabled}
+                   className="w-full bg-slate-900 border border-slate-800 text-sky-500 hover:bg-slate-800 font-black py-4 rounded-2xl text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                    <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} /> 
+                    {isSyncing ? 'SINCRONIZANDO...' : 'FORÇAR SINCRONIZAÇÃO AGORA'}
+                 </button>
+                 
+                 {lastSyncTime && (
+                   <p className="text-[8px] text-center text-slate-600 font-bold uppercase tracking-widest">
+                     Última sincronização: {lastSyncTime.toLocaleTimeString()}
+                   </p>
+                 )}
+              </div>
+
               <div className="p-6 bg-slate-950 rounded-[32px] border border-white/5 space-y-4 shadow-inner">
                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">MINHA CONTA</p>
                  <div className="flex items-center gap-4">
@@ -1076,12 +1311,6 @@ const App: React.FC = () => {
                  </div>
               </div>
               <button onClick={handleLogout} className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-black py-6 rounded-3xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg border border-rose-500/10"><LogOut size={20} /><span className="uppercase text-[10px] tracking-widest">SAIR DO SISTEMA</span></button>
-              
-              <div className="pt-4 border-t border-white/5">
-                <button onClick={testFirebaseConnection} className="w-full bg-slate-950 text-slate-600 hover:text-sky-500 font-bold py-4 rounded-2xl text-[9px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
-                   <Sparkles size={14} /> Testar Conexão Firebase
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1210,7 +1439,7 @@ const App: React.FC = () => {
                           </button>
                         )}
                         {currentUser.role === 'ADMIN' && u.id !== currentUser.id && (
-                          <button onClick={() => { if(confirm('Remover funcionário?')) setUsers(prev => prev.filter(usr => usr.id !== u.id)) }} className="p-2 text-slate-700 hover:text-rose-500 active:scale-75 transition-all">
+                          <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-slate-700 hover:text-rose-500 active:scale-75 transition-all">
                             <Trash2 size={16} />
                           </button>
                         )}

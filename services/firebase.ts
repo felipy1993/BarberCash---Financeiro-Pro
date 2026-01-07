@@ -1,6 +1,20 @@
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc } from "firebase/firestore";
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  setDoc,
+  query,
+  where,
+  onSnapshot,
+  Timestamp
+} from "firebase/firestore";
+import type { Transaction, Product, User } from '../types';
 
 // Configuração fornecida pelo usuário
 const firebaseConfig = {
@@ -18,15 +32,286 @@ const app = initializeApp(firebaseConfig);
 // Inicializa o Firestore (Banco de Dados)
 export const db = getFirestore(app);
 
-// Função de teste de conexão
+// ============================================
+// COLEÇÕES DO FIRESTORE
+// ============================================
+const COLLECTIONS = {
+  USERS: 'users',
+  TRANSACTIONS: 'transactions',
+  PRODUCTS: 'products',
+  SERVICE_CONFIG: 'service_config',
+  CARD_FEES: 'card_fees',
+  SYSTEM_CONFIG: 'system_config'
+};
+
+// ============================================
+// USUÁRIOS
+// ============================================
+
+export const saveUser = async (user: User): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.USERS, user.id), user);
+    console.log('✅ Usuário salvo:', user.username);
+  } catch (error) {
+    console.error('❌ Erro ao salvar usuário:', error);
+    throw error;
+  }
+};
+
+export const getAllUsers = async (): Promise<User[]> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.USERS));
+    const users: User[] = [];
+    querySnapshot.forEach((doc) => {
+      users.push(doc.data() as User);
+    });
+    console.log(`✅ ${users.length} usuários carregados`);
+    return users;
+  } catch (error) {
+    console.error('❌ Erro ao carregar usuários:', error);
+    return [];
+  }
+};
+
+export const updateUser = async (user: User): Promise<void> => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.USERS, user.id), { ...user });
+    console.log('✅ Usuário atualizado:', user.username);
+  } catch (error) {
+    console.error('❌ Erro ao atualizar usuário:', error);
+    throw error;
+  }
+};
+
+export const deleteUser = async (userId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.USERS, userId));
+    console.log('✅ Usuário removido:', userId);
+  } catch (error) {
+    console.error('❌ Erro ao remover usuário:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// TRANSAÇÕES
+// ============================================
+
+export const saveTransaction = async (transaction: Transaction): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.TRANSACTIONS, transaction.id), transaction);
+    console.log('✅ Transação salva:', transaction.description);
+  } catch (error) {
+    console.error('❌ Erro ao salvar transação:', error);
+    throw error;
+  }
+};
+
+export const getAllTransactions = async (): Promise<Transaction[]> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.TRANSACTIONS));
+    const transactions: Transaction[] = [];
+    querySnapshot.forEach((doc) => {
+      transactions.push(doc.data() as Transaction);
+    });
+    console.log(`✅ ${transactions.length} transações carregadas`);
+    return transactions;
+  } catch (error) {
+    console.error('❌ Erro ao carregar transações:', error);
+    return [];
+  }
+};
+
+export const deleteTransaction = async (transactionId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.TRANSACTIONS, transactionId));
+    console.log('✅ Transação removida:', transactionId);
+  } catch (error) {
+    console.error('❌ Erro ao remover transação:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// PRODUTOS
+// ============================================
+
+export const saveProduct = async (product: Product): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.PRODUCTS, product.id), product);
+    console.log('✅ Produto salvo:', product.name);
+  } catch (error) {
+    console.error('❌ Erro ao salvar produto:', error);
+    throw error;
+  }
+};
+
+export const getAllProducts = async (): Promise<Product[]> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
+    const products: Product[] = [];
+    querySnapshot.forEach((doc) => {
+      products.push(doc.data() as Product);
+    });
+    console.log(`✅ ${products.length} produtos carregados`);
+    return products;
+  } catch (error) {
+    console.error('❌ Erro ao carregar produtos:', error);
+    return [];
+  }
+};
+
+export const updateProduct = async (product: Product): Promise<void> => {
+  try {
+    await updateDoc(doc(db, COLLECTIONS.PRODUCTS, product.id), { ...product });
+    console.log('✅ Produto atualizado:', product.name);
+  } catch (error) {
+    console.error('❌ Erro ao atualizar produto:', error);
+    throw error;
+  }
+};
+
+export const deleteProduct = async (productId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.PRODUCTS, productId));
+    console.log('✅ Produto removido:', productId);
+  } catch (error) {
+    console.error('❌ Erro ao remover produto:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// CONFIGURAÇÕES
+// ============================================
+
+export const saveServiceConfig = async (config: Record<string, { price: number }>): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.SERVICE_CONFIG, 'default'), { config });
+    console.log('✅ Configuração de serviços salva');
+  } catch (error) {
+    console.error('❌ Erro ao salvar configuração de serviços:', error);
+    throw error;
+  }
+};
+
+export const getServiceConfig = async (): Promise<Record<string, { price: number }> | null> => {
+  try {
+    const docSnap = await getDocs(collection(db, COLLECTIONS.SERVICE_CONFIG));
+    if (!docSnap.empty) {
+      const data = docSnap.docs[0].data();
+      console.log('✅ Configuração de serviços carregada');
+      return data.config;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Erro ao carregar configuração de serviços:', error);
+    return null;
+  }
+};
+
+export const saveCardFees = async (fees: { debit: number; credit: number }): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.CARD_FEES, 'default'), fees);
+    console.log('✅ Taxas de cartão salvas');
+  } catch (error) {
+    console.error('❌ Erro ao salvar taxas de cartão:', error);
+    throw error;
+  }
+};
+
+export const getCardFees = async (): Promise<{ debit: number; credit: number } | null> => {
+  try {
+    const docSnap = await getDocs(collection(db, COLLECTIONS.CARD_FEES));
+    if (!docSnap.empty) {
+      const data = docSnap.docs[0].data();
+      console.log('✅ Taxas de cartão carregadas');
+      return data as { debit: number; credit: number };
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Erro ao carregar taxas de cartão:', error);
+    return null;
+  }
+};
+
+// ============================================
+// SINCRONIZAÇÃO COMPLETA
+// ============================================
+
+export const syncAllDataToFirebase = async (data: {
+  users: User[];
+  transactions: Transaction[];
+  products: Product[];
+  serviceConfig: Record<string, { price: number }>;
+  cardFees: { debit: number; credit: number };
+}): Promise<void> => {
+  try {
+    console.log('🔄 Iniciando sincronização completa com Firebase...');
+    
+    // Salvar usuários
+    for (const user of data.users) {
+      await saveUser(user);
+    }
+    
+    // Salvar transações
+    for (const transaction of data.transactions) {
+      await saveTransaction(transaction);
+    }
+    
+    // Salvar produtos
+    for (const product of data.products) {
+      await saveProduct(product);
+    }
+    
+    // Salvar configurações
+    await saveServiceConfig(data.serviceConfig);
+    await saveCardFees(data.cardFees);
+    
+    console.log('✅ Sincronização completa concluída!');
+  } catch (error) {
+    console.error('❌ Erro na sincronização:', error);
+    throw error;
+  }
+};
+
+export const loadAllDataFromFirebase = async (): Promise<{
+  users: User[];
+  transactions: Transaction[];
+  products: Product[];
+  serviceConfig: Record<string, { price: number }> | null;
+  cardFees: { debit: number; credit: number } | null;
+}> => {
+  try {
+    console.log('📥 Carregando dados do Firebase...');
+    
+    const [users, transactions, products, serviceConfig, cardFees] = await Promise.all([
+      getAllUsers(),
+      getAllTransactions(),
+      getAllProducts(),
+      getServiceConfig(),
+      getCardFees()
+    ]);
+    
+    console.log('✅ Todos os dados carregados do Firebase!');
+    
+    return { users, transactions, products, serviceConfig, cardFees };
+  } catch (error) {
+    console.error('❌ Erro ao carregar dados:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// FUNÇÃO DE TESTE
+// ============================================
+
 export const testFirebaseConnection = async () => {
   try {
     console.log("Iniciando teste de conexão com Firebase (Firestore)...");
     
-    // Tenta acessar uma coleção de teste (não precisa existir previamente)
     const testCollectionRef = collection(db, "_connection_test_barbercash");
     
-    // Tenta adicionar um documento simples para verificar permissão de escrita
     const docRef = await addDoc(testCollectionRef, {
       timestamp: new Date(),
       status: "connected",
