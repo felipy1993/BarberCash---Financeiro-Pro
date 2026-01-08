@@ -944,18 +944,18 @@ const App: React.FC = () => {
                     </div>
                     
                     {currentUser.role === 'ADMIN' && (
-                      <div className="flex flex-col gap-1 pl-2 border-l border-slate-800">
+                      <div className="flex flex-col gap-2 pl-3 border-l border-slate-800 ml-2">
                         <button 
                           onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
-                          className="p-1.5 text-slate-600 hover:text-sky-500 active:scale-75 transition-all bg-slate-950 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-sky-500 active:scale-75 transition-all bg-slate-950 rounded-xl"
                         >
-                          <Pencil size={12} />
+                          <Pencil size={16} />
                         </button>
                         <button 
                           onClick={() => handleDeleteTransaction(t.id)}
-                          className="p-1.5 text-slate-600 hover:text-rose-500 active:scale-75 transition-all bg-slate-950 rounded-lg"
+                          className="p-2 text-slate-500 hover:text-rose-500 active:scale-75 transition-all bg-slate-950 rounded-xl"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     )}
