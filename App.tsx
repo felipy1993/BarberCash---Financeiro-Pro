@@ -626,6 +626,14 @@ const App: React.FC = () => {
     }).sort((a, b) => b.date.localeCompare(a.date));
   }, [transactions, searchQuery, historyStartDate, historyEndDate]);
 
+  const historyAnalytics = useMemo(() => {
+    return filteredTransactions.reduce((acc, t) => {
+      if (t.type === 'INCOME') acc.income += t.amount;
+      else acc.expense += t.amount;
+      return acc;
+    }, { income: 0, expense: 0 });
+  }, [filteredTransactions]);
+
   // --- PDF EXPORTS ---
   const handleExportPDF = () => {
     const doc = new jsPDF();
@@ -924,6 +932,23 @@ const App: React.FC = () => {
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
                   <input type="text" placeholder="BUSCAR NA LISTA..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-[24px] py-5 pl-14 pr-6 text-sm text-white outline-none focus:border-sky-500 font-bold transition-all" />
                </div>
+             </div>
+
+             <div className="grid grid-cols-2 gap-3 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[28px] shadow-lg">
+                   <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">ENTRADAS</p>
+                   <p className="text-lg font-black text-white">R$ {historyAnalytics.income.toFixed(2)}</p>
+                </div>
+                <div className="bg-rose-500/10 border border-rose-500/20 p-5 rounded-[28px] shadow-lg">
+                   <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mb-1">SAÍDAS</p>
+                   <p className="text-lg font-black text-white">R$ {historyAnalytics.expense.toFixed(2)}</p>
+                </div>
+                <div className="col-span-2 bg-slate-800/50 border border-white/5 p-5 rounded-[28px] flex items-center justify-between shadow-lg">
+                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">RESULTADO</p>
+                   <div className={`text-lg font-black ${historyAnalytics.income - historyAnalytics.expense >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      R$ {(historyAnalytics.income - historyAnalytics.expense).toFixed(2)}
+                   </div>
+                </div>
              </div>
 
              <div className="space-y-3 pb-24">
