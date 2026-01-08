@@ -226,7 +226,7 @@ const App: React.FC = () => {
   // Carregar dados do Firebase na inicialização
   useEffect(() => {
     const loadDataFromFirebase = async () => {
-      if (!syncEnabled || !currentUser) return;
+      if (!syncEnabled) return; // Removemos a checagem de currentUser
       
       try {
         console.log('📥 Carregando dados do Firebase...');
@@ -262,15 +262,13 @@ const App: React.FC = () => {
         console.log('✅ Dados carregados do Firebase com sucesso!');
       } catch (error) {
         console.error('❌ Erro ao carregar dados do Firebase:', error);
-        showToast('ERRO AO CARREGAR DADOS DO FIREBASE');
+        // Não mostrar toast de erro no login para não assustar, apenas logar
       }
     };
 
-    // Carregar apenas uma vez quando o usuário faz login
-    if (currentUser && syncEnabled) {
-      loadDataFromFirebase();
-    }
-  }, [currentUser?.id]); // Executa apenas quando o usuário muda
+    // Carregar na montagem do componente
+    loadDataFromFirebase();
+  }, []); // Array vazio para executar apenas uma vez no início
 
   useEffect(() => {
     if (editingProduct) {
