@@ -943,7 +943,6 @@ const App: React.FC = () => {
                       <p className="text-[8px] font-black text-slate-700 uppercase mt-1">{t.paymentMethod}</p>
                     </div>
                     
-                    {currentUser.role === 'ADMIN' && (
                       <div className="flex flex-col gap-2 pl-3 border-l border-slate-800 ml-2">
                         <button 
                           onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
@@ -958,7 +957,6 @@ const App: React.FC = () => {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                    )}
                   </div>
                 </div>
               )) : (
