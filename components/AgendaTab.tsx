@@ -217,21 +217,29 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
       {/* GRID DE HORÁRIOS */}
       <div className="space-y-3">
         {(() => {
-          // Calcula quais horários exibir: padrão (8-20) + horários dos agendamentos do dia
-          const standardHours = Array.from({ length: 13 }, (_, i) => i + 8);
-          const appointmentHours = dailyAppointments.map(a => parseInt(a.time.split(':')[0]));
-          const allHours = Array.from(new Set([...standardHours, ...appointmentHours])).sort((a, b) => a - b);
+          // Geração de slots de tempo de 30 em 30 min, começando às 07:00 até 20:00
+          const generateTimeSlots = () => {
+             const slots = [];
+             for (let hour = 7; hour <= 20; hour++) {
+               slots.push(`${hour.toString().padStart(2, '0')}:00`);
+               if (hour !== 20) { // Não adiciona 20:30 se fechar as 20h
+                  slots.push(`${hour.toString().padStart(2, '0')}:30`);
+               }
+             }
+             return slots;
+          };
 
-          return allHours.map(hour => {
-            const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-            // Procura agendamentos dentro desta hora (ex: 09:00, 09:30, 09:45)
-            const app = dailyAppointments.find(a => {
-              const appHour = parseInt(a.time.split(':')[0]);
-              return appHour === hour && a.status !== 'CANCELADO';
-            });
+          const standardSlots = generateTimeSlots();
+
+          // Adicionar horários extras que tenham agendamento (ex: 07:15)
+          const appointmentSlots = dailyAppointments.map(a => a.time);
+          const allSlots = Array.from(new Set([...standardSlots, ...appointmentSlots])).sort();
+
+          return allSlots.map(timeStr => {
+            const app = dailyAppointments.find(a => a.time === timeStr && a.status !== 'CANCELADO');
             
             return (
-              <div key={hour} className="flex gap-4 group">
+              <div key={timeStr} className="flex gap-4 group">
                 <div className="w-16 py-4 flex flex-col items-center justify-start pt-2">
                   <span className="text-sm font-black text-slate-500">{timeStr}</span>
                 </div>
