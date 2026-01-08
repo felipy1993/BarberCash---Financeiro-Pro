@@ -303,6 +303,81 @@ export const loadAllDataFromFirebase = async (): Promise<{
 };
 
 // ============================================
+// LISTENERS EM TEMPO REAL (REAL-TIME)
+// ============================================
+
+export const subscribeToUsers = (callback: (users: User[]) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.USERS), (snapshot) => {
+    const users: User[] = [];
+    snapshot.forEach((doc) => {
+      users.push(doc.data() as User);
+    });
+    console.log(`🔄 Real-time: ${users.length} usuários recebidos`);
+    callback(users);
+  }, (error) => {
+    console.error("❌ Erro no listener de usuários:", error);
+  });
+};
+
+export const subscribeToTransactions = (callback: (transactions: Transaction[]) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.TRANSACTIONS), (snapshot) => {
+    const transactions: Transaction[] = [];
+    snapshot.forEach((doc) => {
+      transactions.push(doc.data() as Transaction);
+    });
+    console.log(`🔄 Real-time: ${transactions.length} transações recebidas`);
+    callback(transactions);
+  }, (error) => {
+    console.error("❌ Erro no listener de transações:", error);
+  });
+};
+
+export const subscribeToProducts = (callback: (products: Product[]) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.PRODUCTS), (snapshot) => {
+    const products: Product[] = [];
+    snapshot.forEach((doc) => {
+      products.push(doc.data() as Product);
+    });
+    console.log(`🔄 Real-time: ${products.length} produtos recebidos`);
+    callback(products);
+  }, (error) => {
+    console.error("❌ Erro no listener de produtos:", error);
+  });
+};
+
+export const subscribeToServiceConfig = (callback: (config: Record<string, { price: number }>) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.SERVICE_CONFIG), (snapshot) => {
+    let config = {};
+    if (!snapshot.empty) {
+      snapshot.forEach(doc => {
+        if (doc.data().config) config = doc.data().config;
+      });
+    }
+    console.log(`🔄 Real-time: Configuração de serviços recebida`);
+    callback(config);
+  }, (error) => {
+    console.error("❌ Erro no listener de serviços:", error);
+  });
+};
+
+export const subscribeToCardFees = (callback: (fees: { debit: number; credit: number }) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.CARD_FEES), (snapshot) => {
+    let fees = { debit: 0, credit: 0 };
+    if (!snapshot.empty) {
+      snapshot.forEach(doc => {
+         // Assumindo que o primeiro ou os documentos têm os campos debit e credit
+         const data = doc.data();
+         if (data.debit !== undefined) fees = data as { debit: number; credit: number };
+      });
+    }
+    console.log(`🔄 Real-time: Taxas de cartão recebidas`);
+    callback(fees);
+  }, (error) => {
+    console.error("❌ Erro no listener de taxas:", error);
+  });
+};
+
+// ============================================
 // FUNÇÃO DE TESTE
 // ============================================
 

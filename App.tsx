@@ -11,7 +11,12 @@ import {
   saveCardFees,
   deleteUser as deleteUserFromFirebase,
   deleteProduct as deleteProductFromFirebase,
-  deleteTransaction as deleteTransactionFromFirebase
+  deleteTransaction as deleteTransactionFromFirebase,
+  subscribeToUsers,
+  subscribeToTransactions,
+  subscribeToProducts,
+  subscribeToServiceConfig,
+  subscribeToCardFees
 } from './services/firebase';
 import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole } from './types';
 import { TransactionForm } from './components/TransactionForm';
@@ -223,52 +228,41 @@ const App: React.FC = () => {
     setDeferredPrompt(null);
   };
 
-  // Carregar dados do Firebase na inicialização
+  // Sincronização em tempo real (Real-time Listeners)
   useEffect(() => {
-    const loadDataFromFirebase = async () => {
-      if (!syncEnabled) return; // Removemos a checagem de currentUser
-      
-      try {
-        console.log('📥 Carregando dados do Firebase...');
-        const data = await loadAllDataFromFirebase();
-        
-        // Atualizar estados apenas se houver dados no Firebase
-        if (data.users.length > 0) {
-          setUsers(data.users);
-          localStorage.setItem('barber_users', JSON.stringify(data.users));
-        }
-        
-        if (data.transactions.length > 0) {
-          setTransactions(data.transactions);
-          localStorage.setItem('barber_transactions', JSON.stringify(data.transactions));
-        }
-        
-        if (data.products.length > 0) {
-          setProducts(data.products);
-          localStorage.setItem('barber_products', JSON.stringify(data.products));
-        }
-        
-        if (data.serviceConfig) {
-          setServiceConfig(data.serviceConfig);
-          localStorage.setItem('barber_service_config', JSON.stringify(data.serviceConfig));
-        }
-        
-        if (data.cardFees) {
-          setCardFees(data.cardFees);
-          localStorage.setItem('barber_card_fees', JSON.stringify(data.cardFees));
-        }
-        
-        setLastSyncTime(new Date());
-        console.log('✅ Dados carregados do Firebase com sucesso!');
-      } catch (error) {
-        console.error('❌ Erro ao carregar dados do Firebase:', error);
-        // Não mostrar toast de erro no login para não assustar, apenas logar
-      }
-    };
+    if (!syncEnabled) return;
 
-    // Carregar na montagem do componente
-    loadDataFromFirebase();
-  }, []); // Array vazio para executar apenas uma vez no início
+    console.log('� Iniciando ouvintes em tempo real...');
+
+    const unsubscribeUsers = subscribeToUsers((data) => {
+      setUsers(data);
+    });
+
+    const unsubscribeTransactions = subscribeToTransactions((data) => {
+      setTransactions(data);
+    });
+
+    const unsubscribeProducts = subscribeToProducts((data) => {
+      setProducts(data);
+    });
+
+    const unsubscribeService = subscribeToServiceConfig((data) => {
+      setServiceConfig(data);
+    });
+
+    const unsubscribeFees = subscribeToCardFees((data) => {
+      setCardFees(data);
+    });
+
+    return () => {
+      console.log('🔌 Desconectando ouvintes...');
+      unsubscribeUsers();
+      unsubscribeTransactions();
+      unsubscribeProducts();
+      unsubscribeService();
+      unsubscribeFees();
+    };
+  }, [syncEnabled]);
 
   useEffect(() => {
     if (editingProduct) {
@@ -303,38 +297,23 @@ const App: React.FC = () => {
   // Salvar no localStorage e Firebase
   useEffect(() => {
     localStorage.setItem('barber_users', JSON.stringify(users));
-    if (syncEnabled && currentUser) {
-      users.forEach(user => saveUser(user).catch(console.error));
-    }
-  }, [users, syncEnabled, currentUser]);
+  }, [users]);
 
   useEffect(() => {
     localStorage.setItem('barber_transactions', JSON.stringify(transactions));
-    if (syncEnabled && currentUser) {
-      transactions.forEach(transaction => saveTransaction(transaction).catch(console.error));
-    }
-  }, [transactions, syncEnabled, currentUser]);
+  }, [transactions]);
 
   useEffect(() => {
     localStorage.setItem('barber_products', JSON.stringify(products));
-    if (syncEnabled && currentUser) {
-      products.forEach(product => saveProduct(product).catch(console.error));
-    }
-  }, [products, syncEnabled, currentUser]);
+  }, [products]);
 
   useEffect(() => {
     localStorage.setItem('barber_service_config', JSON.stringify(serviceConfig));
-    if (syncEnabled && currentUser) {
-      saveServiceConfig(serviceConfig).catch(console.error);
-    }
-  }, [serviceConfig, syncEnabled, currentUser]);
+  }, [serviceConfig]);
 
   useEffect(() => {
     localStorage.setItem('barber_card_fees', JSON.stringify(cardFees));
-    if (syncEnabled && currentUser) {
-      saveCardFees(cardFees).catch(console.error);
-    }
-  }, [cardFees, syncEnabled, currentUser]);
+  }, [cardFees]);
 
   useEffect(() => {
     localStorage.setItem('barber_sync_enabled', JSON.stringify(syncEnabled));
@@ -374,14 +353,24 @@ const App: React.FC = () => {
       }
     }
 
+    const transactionToSave: Transaction = {
+      ...data,
+      amount,
+      id: data.id || Math.random().toString(36).substring(2, 11)
+    };
+
+    if (syncEnabled) {
+      saveTransaction(transactionToSave).catch(console.error);
+    }
+
     setTransactions(prev => {
-      if (data.id) return prev.map(t => t.id === data.id ? { ...data, amount, id: data.id! } : t);
-      return [{ ...data, amount, id: Math.random().toString(36).substring(2, 11) }, ...prev];
+      if (data.id) return prev.map(t => t.id === data.id ? transactionToSave : t);
+      return [transactionToSave, ...prev];
     });
     setIsFormOpen(false);
     setEditingTransaction(null);
     showToast('REGISTRO SALVO!');
-  }, [cardFees]);
+  }, [cardFees, syncEnabled]);
 
   const handleDeleteTransaction = (id: string) => {
     if (confirm('TEM CERTEZA QUE DESEJA EXCLUIR ESTE LANÇAMENTO?')) {
@@ -407,6 +396,10 @@ const App: React.FC = () => {
       stock: Number(formData.get('stock')),
       profitMargin: Number(prodProfitMargin) || 0
     };
+
+    if (syncEnabled) {
+      saveProduct(newProd).catch(console.error);
+    }
 
     setProducts(prev => {
       if (editingProduct) return prev.map(p => p.id === editingProduct.id ? newProd : p);
@@ -459,7 +452,13 @@ const App: React.FC = () => {
   const handleSellProduct = (product: Product) => {
     if (product.stock <= 0) return alert('ESTOQUE ESGOTADO!');
     
-    setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - 1 } : p));
+    const updatedProduct = { ...product, stock: product.stock - 1 };
+    
+    if (syncEnabled) {
+      saveProduct(updatedProduct).catch(console.error);
+    }
+    
+    setProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
     handleSaveTransaction({
       description: product.name,
       amount: product.price,
@@ -475,14 +474,17 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!serviceFormData.name || !serviceFormData.price) return;
     
-    setServiceConfig(prev => {
-      const next = { ...prev };
-      if (serviceFormData.oldName && serviceFormData.oldName !== serviceFormData.name) {
-        delete next[serviceFormData.oldName];
-      }
-      next[serviceFormData.name.toUpperCase()] = { price: Number(serviceFormData.price) };
-      return next;
-    });
+    const newConfig = { ...serviceConfig };
+    if (serviceFormData.oldName && serviceFormData.oldName !== serviceFormData.name) {
+      delete newConfig[serviceFormData.oldName];
+    }
+    newConfig[serviceFormData.name.toUpperCase()] = { price: Number(serviceFormData.price) };
+
+    if (syncEnabled) {
+      saveServiceConfig(newConfig).catch(console.error);
+    }
+
+    setServiceConfig(newConfig);
     
     setIsServiceFormOpen(false);
     setServiceFormData({ oldName: '', name: '', price: '' });
@@ -491,17 +493,21 @@ const App: React.FC = () => {
 
   const handleDeleteService = (name: string) => {
     if (confirm(`DESEJA EXCLUIR O SERVIÇO "${name}"?`)) {
-      setServiceConfig(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
+      const next = { ...serviceConfig };
+      delete next[name];
+      if (syncEnabled) {
+        saveServiceConfig(next).catch(console.error);
+      }
+      setServiceConfig(next);
       showToast('SERVIÇO EXCLUÍDO!');
     }
   };
 
   const handleSaveFees = (e: React.FormEvent) => {
     e.preventDefault();
+    if (syncEnabled) {
+      saveCardFees(cardFees).catch(console.error);
+    }
     setIsFeesManagementOpen(false);
     showToast('TAXAS ATUALIZADAS!');
   };
@@ -519,6 +525,11 @@ const App: React.FC = () => {
       password: newUser.password,
       role: newUser.role
     };
+    
+    if (syncEnabled) {
+      saveUser(user).catch(console.error);
+    }
+
     setUsers(prev => [...prev, user]);
     setNewUser({ name: '', username: '', password: '', role: 'USER' });
     showToast('USUÁRIO CADASTRADO!');
@@ -562,6 +573,10 @@ const App: React.FC = () => {
     // Atualiza ambos os storages para garantir que a sessão seja mantida
     localStorage.setItem('barber_session', JSON.stringify(updatedUser));
     sessionStorage.setItem('barber_session', JSON.stringify(updatedUser));
+
+    if (syncEnabled) {
+      saveUser(updatedUser).catch(console.error);
+    }
 
     setIsPasswordModalOpen(false);
     setNewPasswordData({ current: '', new: '', confirm: '' });
