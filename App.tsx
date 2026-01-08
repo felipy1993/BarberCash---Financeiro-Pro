@@ -109,7 +109,7 @@ const App: React.FC = () => {
   });
 
   const [loginData, setLoginData] = useState({ username: '', password: '' });
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
