@@ -69,10 +69,9 @@ import {
   Smartphone
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis,
+  PieChart, 
+  Pie, 
+  Legend,
   ResponsiveContainer,
   Cell,
   Tooltip,
@@ -1099,14 +1098,30 @@ const App: React.FC = () => {
             
             <div className="bg-slate-900 border border-white/5 p-6 rounded-[40px] relative shadow-lg" style={{ minHeight: '260px', height: '260px' }}>
                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: 'ENTRADAS', val: summary.monthIncome, fill: '#10b981' },
-                    { name: 'SAÍDAS', val: summary.monthExpense, fill: '#f43f5e' }
-                  ]}>
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', fontSize: '10px'}} />
-                    <Bar dataKey="val" radius={[12, 12, 0, 0]} barSize={50} />
-                  </BarChart>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'ENTRADAS', value: summary.monthIncome, fill: '#10b981' },
+                        { name: 'SAÍDAS', value: summary.monthExpense, fill: '#f43f5e' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {[
+                        { name: 'ENTRADAS', value: summary.monthIncome, fill: '#10b981' },
+                        { name: 'SAÍDAS', value: summary.monthExpense, fill: '#f43f5e' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', fontSize: '10px', color: '#fff'}} itemStyle={{color: '#fff'}} />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', paddingTop: '10px'}} />
+                  </PieChart>
                </ResponsiveContainer>
             </div>
 
