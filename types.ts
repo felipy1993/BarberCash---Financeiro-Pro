@@ -2,6 +2,7 @@
 export type TransactionType = 'INCOME' | 'EXPENSE';
 export type PaymentMethod = 'DINHEIRO' | 'PIX' | 'DÉBITO' | 'CRÉDITO' | 'OUTRO';
 export type UserRole = 'ADMIN' | 'USER';
+export type AppointmentStatus = 'AGENDADO' | 'CONCLUÍDO' | 'CANCELADO';
 
 export interface User {
   id: string;
@@ -17,7 +18,7 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: string;
-  date: string;
+  date: string; // YYYY-MM-DD
   paymentMethod: PaymentMethod;
 }
 
@@ -29,6 +30,18 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
+}
+
+export interface Appointment {
+  id: string;
+  clientName: string;
+  service: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  status: AppointmentStatus;
+  price: number;
+  notes?: string;
+  phone?: string;
 }
 
 export interface CategoryState {

@@ -41,7 +41,45 @@ const COLLECTIONS = {
   PRODUCTS: 'products',
   SERVICE_CONFIG: 'service_config',
   CARD_FEES: 'card_fees',
-  SYSTEM_CONFIG: 'system_config'
+  SYSTEM_CONFIG: 'system_config',
+  APPOINTMENTS: 'appointments'
+};
+
+// ============================================
+// AGENDAMENTOS
+// ============================================
+
+export const saveAppointment = async (appointment: any): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.APPOINTMENTS, appointment.id), appointment);
+    console.log('✅ Agendamento salvo:', appointment.clientName);
+  } catch (error) {
+    console.error('❌ Erro ao salvar agendamento:', error);
+    throw error;
+  }
+};
+
+export const deleteAppointment = async (id: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.APPOINTMENTS, id));
+    console.log('✅ Agendamento removido:', id);
+  } catch (error) {
+    console.error('❌ Erro ao remover agendamento:', error);
+    throw error;
+  }
+};
+
+export const subscribeToAppointments = (callback: (appointments: any[]) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.APPOINTMENTS), (snapshot) => {
+    const apps: any[] = [];
+    snapshot.forEach((doc) => {
+      apps.push(doc.data());
+    });
+    console.log(`🔄 Real-time: ${apps.length} agendamentos recebidos`);
+    callback(apps);
+  }, (error) => {
+    console.error("❌ Erro no listener de agendamentos:", error);
+  });
 };
 
 // ============================================

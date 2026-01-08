@@ -16,10 +16,14 @@ import {
   subscribeToTransactions,
   subscribeToProducts,
   subscribeToServiceConfig,
-  subscribeToCardFees
+  subscribeToCardFees,
+  saveAppointment,
+  deleteAppointment as deleteAppointmentFromFirebase,
+  subscribeToAppointments
 } from './services/firebase';
-import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole } from './types';
+import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole, Appointment } from './types';
 import { TransactionForm } from './components/TransactionForm';
+import { AgendaTab } from './components/AgendaTab';
 import { 
   Plus, 
   TrendingUp, 
@@ -66,7 +70,8 @@ import {
   RefreshCw,
   Maximize2,
   Minimize2,
-  Smartphone
+  Smartphone,
+  Calendar
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -137,6 +142,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+    const saved = localStorage.getItem('barber_appointments');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [categories] = useState<CategoryState>(INITIAL_CATEGORIES);
 
   const [serviceConfig, setServiceConfig] = useState<Record<string, { price: number }>>(() => {
@@ -159,7 +169,7 @@ const App: React.FC = () => {
   const [historyEndDate, setHistoryEndDate] = useState<string>(getTodayStr());
 
   // UI States
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'inventory' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'inventory' | 'reports' | 'agenda'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -253,6 +263,10 @@ const App: React.FC = () => {
       setCardFees(data);
     });
 
+    const unsubscribeAppointments = subscribeToAppointments((data) => {
+      setAppointments(data);
+    });
+
     return () => {
       console.log('🔌 Desconectando ouvintes...');
       unsubscribeUsers();
@@ -260,6 +274,7 @@ const App: React.FC = () => {
       unsubscribeProducts();
       unsubscribeService();
       unsubscribeFees();
+      unsubscribeAppointments();
     };
   }, [syncEnabled]);
 
@@ -305,6 +320,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('barber_products', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_appointments', JSON.stringify(appointments));
+  }, [appointments]);
 
   useEffect(() => {
     localStorage.setItem('barber_service_config', JSON.stringify(serviceConfig));
@@ -580,6 +599,45 @@ const App: React.FC = () => {
     setIsPasswordModalOpen(false);
     setNewPasswordData({ current: '', new: '', confirm: '' });
     showToast('SENHA ATUALIZADA COM SUCESSO!');
+  };
+
+  // --- AGENDA HANDLERS ---
+  const handleSaveAppointment = (app: Appointment) => {
+    if (syncEnabled) {
+      saveAppointment(app).catch(console.error);
+    }
+    setAppointments(prev => {
+      const exists = prev.find(a => a.id === app.id);
+      if (exists) return prev.map(a => a.id === app.id ? app : a);
+      return [...prev, app];
+    });
+    showToast('AGENDAMENTO SALVO!');
+  };
+
+  const handleDeleteAppointment = (id: string) => {
+    if (syncEnabled) {
+      deleteAppointmentFromFirebase(id).catch(console.error);
+    }
+    setAppointments(prev => prev.filter(a => a.id !== id));
+    showToast('AGENDAMENTO CANCELADO!');
+  };
+
+  const handleCompleteAppointment = (app: Appointment) => {
+    // 1. Marcar como concluído
+    const completedApp = { ...app, status: 'CONCLUÍDO' as const };
+    handleSaveAppointment(completedApp);
+
+    // 2. Lançar no financeiro
+    handleSaveTransaction({
+      description: app.service,
+      amount: app.price,
+      type: 'INCOME',
+      category: 'CORTE DE CABELO', // Poderia mapear pelo serviço
+      paymentMethod: 'DINHEIRO', // Default, depois o user pode editar no caixa se quiser
+      date: app.date
+    });
+    
+    showToast('SERVIÇO CONCLUÍDO E LANÇADO NO CAIXA!');
   };
 
   // --- ANALYTICS CALCULATIONS ---
@@ -1008,6 +1066,16 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'agenda' && (
+          <AgendaTab 
+            appointments={appointments}
+            services={serviceConfig}
+            onSave={handleSaveAppointment}
+            onDelete={handleDeleteAppointment}
+            onComplete={handleCompleteAppointment}
+          />
+        )}
+
         {activeTab === 'inventory' && (
           <div className="space-y-6 animate-in slide-in-from-right duration-300">
             <div className="flex justify-between items-center px-1">
@@ -1196,6 +1264,7 @@ const App: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-2xl border-t border-white/5 pb-10 pt-4 z-50 flex justify-around items-center px-6 h-28 max-w-lg mx-auto rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
         {[
           { id: 'dashboard', label: 'INÍCIO', icon: Wallet },
+          { id: 'agenda', label: 'AGENDA', icon: Calendar },
           { id: 'history', label: 'CAIXA', icon: History },
           { id: 'reports', label: 'DADOS', icon: BarChart3 },
           { id: 'inventory', label: 'ESTOQUE', icon: Package }
