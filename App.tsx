@@ -85,7 +85,7 @@ import {
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
-const LOGO_URL = "/assets/logo.png";
+const LOGO_URL = "/assets/logo.png?v=2";
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 const getFirstDayOfMonthStr = () => {
