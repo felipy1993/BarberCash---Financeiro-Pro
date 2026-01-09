@@ -22,7 +22,7 @@ import {
   subscribeToAppointments
 } from './services/firebase';
 import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole, Appointment } from './types';
-import { TransactionForm } from './components/TransactionForm';
+import { TransactionForm, AutocompleteItem } from './components/TransactionForm';
 import { AgendaTab } from './components/AgendaTab';
 import { 
   Plus, 
@@ -142,6 +142,8 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+
+
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
     const saved = localStorage.getItem('barber_appointments');
     return saved ? JSON.parse(saved) : [];
@@ -157,6 +159,36 @@ const App: React.FC = () => {
         'COMBO': { price: 75 }
     };
   });
+
+  const autocompleteItems = useMemo<AutocompleteItem[]>(() => {
+    const items: AutocompleteItem[] = [];
+
+    // Add Services
+    Object.entries(serviceConfig).forEach(([name, config]) => {
+      let category = 'CORTE DE CABELO';
+      if (name.includes('BARBA')) category = 'BARBA';
+      else if (name.includes('COMBO')) category = 'COMBO';
+
+      items.push({
+        label: name,
+        amount: config.price,
+        category,
+        type: 'SERVICE'
+      });
+    });
+
+    // Add Products
+    products.forEach(p => {
+      items.push({
+        label: p.name,
+        amount: p.price,
+        category: 'PRODUTOS',
+        type: 'PRODUCT'
+      });
+    });
+
+    return items;
+  }, [serviceConfig, products]);
 
   const [monthlyGoal] = useState<number>(5000);
 
@@ -1286,6 +1318,7 @@ const App: React.FC = () => {
           onClose={() => { setIsFormOpen(false); setEditingTransaction(null); }} 
           categories={categories} 
           initialData={editingTransaction} 
+          autocompleteItems={autocompleteItems}
         />
       )}
 

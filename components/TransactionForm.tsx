@@ -1,24 +1,56 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, TransactionType, CategoryState, PaymentMethod } from '../types';
-import { X, ArrowUpCircle, ArrowDownCircle, Calendar, Tag, PlusCircle } from 'lucide-react';
+import { X, ArrowUpCircle, ArrowDownCircle, Calendar, Tag, PlusCircle, Search } from 'lucide-react';
+
+export interface AutocompleteItem {
+  label: string;
+  amount: number;
+  category: string;
+  type: 'SERVICE' | 'PRODUCT';
+}
 
 interface TransactionFormProps {
   onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }) => void;
   onClose: () => void;
   initialData?: Transaction | null;
   categories: CategoryState;
+  autocompleteItems?: AutocompleteItem[];
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = ['DINHEIRO', 'PIX', 'DÉBITO', 'CRÉDITO', 'OUTRO'];
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onSave, onClose, initialData, categories }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ 
+  onSave, 
+  onClose, 
+  initialData, 
+  categories,
+  autocompleteItems = [] 
+}) => {
   const [type, setType] = useState<TransactionType>('INCOME');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('DINHEIRO');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Autocomplete states
+  const [suggestions, setSuggestions] = useState<AutocompleteItem[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [wrapperRef]);
 
   useEffect(() => {
     if (initialData) {
@@ -59,6 +91,37 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSave, onClos
     setType(newType);
     const validCategories = newType === 'INCOME' ? categories.INCOME : categories.EXPENSE;
     setCategory(validCategories[0]);
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    setDescription(value);
+
+    if (value.length > 0 && type === 'INCOME') {
+      const filtered = autocompleteItems.filter(item => 
+        item.label.includes(value)
+      ).slice(0, 5); // Limit to 5 suggestions
+      setSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = (item: AutocompleteItem) => {
+    setDescription(item.label);
+    setAmount(item.amount.toFixed(2));
+    
+    // Auto-select category if valid
+    const validCategories = categories.INCOME;
+    if (validCategories.includes(item.category)) {
+      setCategory(item.category);
+    } else if (item.type === 'PRODUCT' && validCategories.includes('PRODUTOS')) {
+      setCategory('PRODUTOS');
+    }
+
+    setShowSuggestions(false);
   };
 
   return (
@@ -106,18 +169,46 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSave, onClos
           </div>
 
           <div className="space-y-4">
-            <div>
+            <div ref={wrapperRef} className="relative">
               <label className="text-[9px] font-black text-slate-500 uppercase ml-4 mb-2 block tracking-widest">DESCRIÇÃO</label>
               <div className="flex items-center bg-slate-800/40 rounded-2xl px-4 border border-slate-700/50 focus-within:border-sky-500 transition-all">
                 <input
                   required
                   type="text"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value.toUpperCase())}
+                  onChange={handleDescriptionChange}
+                  onFocus={() => { if(description && type === 'INCOME') setShowSuggestions(true); }}
                   placeholder="EX: CORTE DEGRADÊ"
                   className="w-full bg-transparent p-4 text-sm font-bold text-white outline-none placeholder:text-slate-700 uppercase transition-all"
+                  autoComplete="off"
                 />
+                {type === 'INCOME' && (
+                  <Search size={16} className="text-slate-600" />
+                )}
               </div>
+
+              {/* Autocomplete Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="p-2">
+                    <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest">SUGESTÕES</p>
+                    {suggestions.map((item, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(item)}
+                        className="w-full text-left flex items-center justify-between p-3 hover:bg-slate-700/50 rounded-xl transition-colors group"
+                      >
+                        <div className="flex flex-col">
+                           <span className="text-xs font-bold text-white group-hover:text-sky-400 transition-colors">{item.label}</span>
+                           <span className="text-[9px] text-slate-500 uppercase">{item.type === 'SERVICE' ? 'SERVIÇO' : 'PRODUTO'}</span>
+                        </div>
+                        <span className="text-xs font-black text-emerald-400">R$ {item.amount.toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
