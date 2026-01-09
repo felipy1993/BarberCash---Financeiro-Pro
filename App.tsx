@@ -172,7 +172,7 @@ const App: React.FC = () => {
 
       items.push({
         label: name,
-        amount: config.price,
+        amount: (config as { price: number }).price,
         category,
         type: 'SERVICE'
       });
