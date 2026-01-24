@@ -25,6 +25,7 @@ import {
 import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole, Appointment } from './types';
 import { TransactionForm, AutocompleteItem } from './components/TransactionForm';
 import { AgendaTab } from './components/AgendaTab';
+import { AppointmentNotification } from './components/AppointmentNotification';
 import { 
   Plus, 
   TrendingUp, 
@@ -924,7 +925,13 @@ const App: React.FC = () => {
              <p className="text-[8px] font-black text-slate-500 uppercase mt-1 flex items-center gap-1">{currentUser.role === 'ADMIN' && <ShieldCheck size={8} className="text-emerald-500" />}{currentUser.name}</p>
            </div>
         </div>
-        <button onClick={() => setIsSettingsOpen(true)} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-slate-400 active:scale-90 transition-all hover:bg-slate-800"><Settings size={20} /></button>
+        <div className="flex items-center gap-2">
+          <AppointmentNotification 
+            appointments={appointments}
+            onNotificationClick={() => setActiveTab('agenda')}
+          />
+          <button onClick={() => setIsSettingsOpen(true)} className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-slate-400 active:scale-90 transition-all hover:bg-slate-800"><Settings size={20} /></button>
+        </div>
       </header>
 
       <main className="flex-1 p-6 space-y-8 overflow-y-auto hide-scrollbar">
