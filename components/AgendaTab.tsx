@@ -59,6 +59,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<Appointment | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -231,7 +232,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
           const standardSlots = generateTimeSlots();
 
-          // Adicionar horários extras que tenham agendamento (ex: 07:15)
+          // Adicionar TODOS os horários que tenham agendamento (ex: 07:15, 14:45, etc.)
           const appointmentSlots = dailyAppointments.map(a => a.time);
           const allSlots = Array.from(new Set([...standardSlots, ...appointmentSlots])).sort();
 
@@ -247,16 +248,15 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                 <div className="flex-1 min-h-[80px]">
                   {app ? (
                   <div 
-                    onClick={() => handleOpenModal(undefined, app)}
                     className={`
-                      w-full p-4 rounded-[24px] border transition-all active:scale-95 cursor-pointer
+                      w-full p-4 rounded-[24px] border transition-all
                       ${app.status === 'CONCLUÍDO' 
-                        ? 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20' 
-                        : 'bg-sky-500/10 border-sky-500/20 hover:bg-sky-500/20'}
+                        ? 'bg-emerald-500/10 border-emerald-500/20' 
+                        : 'bg-sky-500/10 border-sky-500/20'}
                     `}
                   >
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1" onClick={() => handleOpenModal(undefined, app)}>
                         <h4 className={`font-black uppercase flex items-center gap-2 ${app.status === 'CONCLUÍDO' ? 'text-emerald-500' : 'text-sky-500'}`}>
                           {app.clientName}
                           {app.status === 'CONCLUÍDO' && <CheckCircle2 size={14} />}
@@ -265,7 +265,16 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                           <Scissors size={10} /> {app.service}
                         </p>
                       </div>
-                      <span className="font-black text-white">{formatCurrency(app.price)}</span>
+                      <div className="flex items-start gap-2">
+                        <span className="font-black text-white">{formatCurrency(app.price)}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(app.id); }}
+                          className="p-2 bg-rose-500/10 rounded-xl text-rose-500 hover:bg-rose-500/20 active:scale-90 transition-all"
+                          title="Excluir agendamento"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
 
                     {app.status === 'AGENDADO' && (
@@ -328,7 +337,7 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase ml-4 tracking-widest">HORÁRIO</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase ml-4 tracking-widest">HORÁRIO (LIVRE)</label>
                   <div className="relative">
                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
@@ -336,8 +345,31 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                       required 
                       value={formData.time}
                       onChange={e => setFormData({...formData, time: e.target.value})}
+                      step="60"
                       className="w-full bg-slate-950 border border-slate-800 p-4 pl-12 rounded-3xl text-sm font-bold text-white outline-none focus:border-sky-500 transition-all" 
+                      title="Digite qualquer horário desejado (ex: 14:15, 09:45, etc.)"
                     />
+                  </div>
+                  <p className="text-[8px] text-slate-600 ml-4 font-bold">
+                    💡 Digite o horário que quiser!
+                  </p>
+                  {/* Atalhos de horários comuns */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(time => (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => setFormData({...formData, time})}
+                        className={`
+                          px-2 py-1 rounded-lg text-[8px] font-black transition-all
+                          ${formData.time === time 
+                            ? 'bg-sky-500 text-white' 
+                            : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}
+                        `}
+                      >
+                        {time}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -379,14 +411,11 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                   <button 
                     type="button"
                     onClick={() => {
-                       if(confirm('CANCELAR AGENDAMENTO?')) {
-                         onDelete(editingApp.id);
-                         setIsModalOpen(false);
-                       }
+                       setConfirmDeleteId(editingApp.id);
                     }}
                     className="flex-1 bg-rose-500/10 text-rose-500 font-black py-4 rounded-3xl uppercase text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-500/20 hover:bg-rose-500/20"
                   >
-                    <Trash2 size={16} /> CANCELAR
+                    <Trash2 size={16} /> EXCLUIR
                   </button>
                 )}
                 <button 
@@ -397,6 +426,49 @@ export const AgendaTab: React.FC<AgendaTabProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[300] flex items-center justify-center p-6 animate-in fade-in">
+          <div className="bg-slate-900 w-full max-w-sm rounded-[32px] p-8 border border-rose-500/20 shadow-2xl">
+            <div className="text-center space-y-6">
+              <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 size={32} className="text-rose-500" />
+              </div>
+              
+              <div>
+                <h3 className="text-xl font-black text-white uppercase mb-2">
+                  EXCLUIR AGENDAMENTO?
+                </h3>
+                <p className="text-sm text-slate-400 font-bold">
+                  Esta ação não pode ser desfeita!
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 bg-slate-800 text-white font-black py-4 rounded-3xl uppercase text-[10px] active:scale-95 transition-all hover:bg-slate-700"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmDeleteId) {
+                      onDelete(confirmDeleteId);
+                      setConfirmDeleteId(null);
+                      setIsModalOpen(false);
+                    }
+                  }}
+                  className="flex-1 bg-rose-500 text-white font-black py-4 rounded-3xl uppercase text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 hover:bg-rose-600"
+                >
+                  <Trash2 size={16} /> EXCLUIR
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
