@@ -938,8 +938,20 @@ const App: React.FC = () => {
         {activeTab === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-[40px] border border-white/5 text-white shadow-2xl">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">SALDO ATUAL</p>
-               <h2 className="text-4xl font-black tracking-tighter mb-8">{summary.balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h2>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">SALDO DO MÊS ATUAL</p>
+               <h2 className="text-4xl font-black tracking-tighter mb-4">{(summary.monthIncome - summary.monthExpense).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h2>
+               
+               <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
+                 <div>
+                   <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-1">Entradas</p>
+                   <p className="text-lg font-black text-emerald-400">{summary.monthIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                 </div>
+                 <div>
+                   <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mb-1">Saídas</p>
+                   <p className="text-lg font-black text-rose-400">{summary.monthExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                 </div>
+               </div>
+
                <div className="space-y-2">
                  <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase"><span>META MENSAL</span><span>{Math.round((summary.monthIncome / monthlyGoal) * 100)}%</span></div>
                  <div className="h-3 w-full bg-slate-950/80 rounded-full p-0.5 border border-white/5">
