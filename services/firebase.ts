@@ -42,7 +42,8 @@ const COLLECTIONS = {
   SERVICE_CONFIG: 'service_config',
   CARD_FEES: 'card_fees',
   SYSTEM_CONFIG: 'system_config',
-  APPOINTMENTS: 'appointments'
+  APPOINTMENTS: 'appointments',
+  COMBOS: 'combos'
 };
 
 // ============================================
@@ -79,6 +80,43 @@ export const subscribeToAppointments = (callback: (appointments: any[]) => void)
     callback(apps);
   }, (error) => {
     console.error("❌ Erro no listener de agendamentos:", error);
+  });
+};
+
+// ============================================
+// COMBOS
+// ============================================
+
+export const saveCombo = async (combo: any): Promise<void> => {
+  try {
+    await setDoc(doc(db, COLLECTIONS.COMBOS, combo.id), combo);
+    console.log('✅ Combo salvo:', combo.clientName);
+  } catch (error) {
+    console.error('❌ Erro ao salvar combo:', error);
+    throw error;
+  }
+};
+
+export const deleteCombo = async (id: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.COMBOS, id));
+    console.log('✅ Combo removido:', id);
+  } catch (error) {
+    console.error('❌ Erro ao remover combo:', error);
+    throw error;
+  }
+};
+
+export const subscribeToCombos = (callback: (combos: any[]) => void) => {
+  return onSnapshot(collection(db, COLLECTIONS.COMBOS), (snapshot) => {
+    const data: any[] = [];
+    snapshot.forEach((doc) => {
+      data.push(doc.data());
+    });
+    console.log(`🔄 Real-time: ${data.length} combos recebidos`);
+    callback(data);
+  }, (error) => {
+    console.error("❌ Erro no listener de combos:", error);
   });
 };
 
@@ -283,6 +321,7 @@ export const syncAllDataToFirebase = async (data: {
   products: Product[];
   serviceConfig: Record<string, { price: number }>;
   cardFees: { debit: number; credit: number };
+  combos: any[];
 }): Promise<void> => {
   try {
     console.log('🔄 Iniciando sincronização completa com Firebase...');
@@ -301,6 +340,11 @@ export const syncAllDataToFirebase = async (data: {
     for (const product of data.products) {
       await saveProduct(product);
     }
+
+    // Salvar combos
+    for (const combo of data.combos) {
+      await saveCombo(combo);
+    }
     
     // Salvar configurações
     await saveServiceConfig(data.serviceConfig);
@@ -317,23 +361,25 @@ export const loadAllDataFromFirebase = async (): Promise<{
   users: User[];
   transactions: Transaction[];
   products: Product[];
+  combos: any[];
   serviceConfig: Record<string, { price: number }> | null;
   cardFees: { debit: number; credit: number } | null;
 }> => {
   try {
     console.log('📥 Carregando dados do Firebase...');
     
-    const [users, transactions, products, serviceConfig, cardFees] = await Promise.all([
+    const [users, transactions, products, combos, serviceConfig, cardFees] = await Promise.all([
       getAllUsers(),
       getAllTransactions(),
       getAllProducts(),
+      getDocs(collection(db, COLLECTIONS.COMBOS)).then(snap => snap.docs.map(d => d.data())),
       getServiceConfig(),
       getCardFees()
     ]);
     
     console.log('✅ Todos os dados carregados do Firebase!');
     
-    return { users, transactions, products, serviceConfig, cardFees };
+    return { users, transactions, products, combos, serviceConfig, cardFees };
   } catch (error) {
     console.error('❌ Erro ao carregar dados:', error);
     throw error;

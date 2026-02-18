@@ -44,6 +44,21 @@ export interface Appointment {
   phone?: string;
 }
 
+export interface Combo {
+  id: string;
+  clientName: string;
+  comboName: string;
+  totalCuts: number;
+  usedCuts: number;
+  price: number;
+  purchaseDate: string;
+  history: {
+    date: string;
+    description: string;
+  }[];
+  status: 'ATIVO' | 'FINALIZADO';
+}
+
 export interface CategoryState {
   INCOME: string[];
   EXPENSE: string[];
@@ -53,3 +68,4 @@ export const INITIAL_CATEGORIES: CategoryState = {
   INCOME: ['CORTE DE CABELO', 'BARBA', 'COMBO', 'PRODUTOS', 'OUTROS'],
   EXPENSE: ['ALUGUEL', 'ENERGIA/ÁGUA', 'MATERIAIS', 'MARKETING', 'LIMPEZA', 'OUTROS']
 };
+

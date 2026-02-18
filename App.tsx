@@ -20,11 +20,15 @@ import {
   subscribeToCardFees,
   saveAppointment,
   deleteAppointment as deleteAppointmentFromFirebase,
-  subscribeToAppointments
+  subscribeToAppointments,
+  saveCombo,
+  deleteCombo as deleteComboFromFirebase,
+  subscribeToCombos
 } from './services/firebase';
-import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole, Appointment } from './types';
+import { Transaction, TransactionType, CategoryState, INITIAL_CATEGORIES, Product, PaymentMethod, User, UserRole, Appointment, Combo } from './types';
 import { TransactionForm, AutocompleteItem } from './components/TransactionForm';
 import { AgendaTab } from './components/AgendaTab';
+import { CombosTab } from './components/CombosTab';
 import { AppointmentNotification } from './components/AppointmentNotification';
 import { 
   Plus, 
@@ -151,6 +155,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [combos, setCombos] = useState<Combo[]>(() => {
+    const saved = localStorage.getItem('barber_combos');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [categories] = useState<CategoryState>(INITIAL_CATEGORIES);
 
   const [serviceConfig, setServiceConfig] = useState<Record<string, { price: number }>>(() => {
@@ -203,7 +212,7 @@ const App: React.FC = () => {
   const [historyEndDate, setHistoryEndDate] = useState<string>(getTodayStr());
 
   // UI States
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'inventory' | 'reports' | 'agenda'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'inventory' | 'reports' | 'agenda' | 'combos'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -301,6 +310,10 @@ const App: React.FC = () => {
       setAppointments(data);
     });
 
+    const unsubscribeCombos = subscribeToCombos((data) => {
+      setCombos(data);
+    });
+
     return () => {
       console.log('🔌 Desconectando ouvintes...');
       unsubscribeUsers();
@@ -309,6 +322,7 @@ const App: React.FC = () => {
       unsubscribeService();
       unsubscribeFees();
       unsubscribeAppointments();
+      unsubscribeCombos();
     };
   }, [syncEnabled]);
 
@@ -358,6 +372,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('barber_appointments', JSON.stringify(appointments));
   }, [appointments]);
+
+  useEffect(() => {
+    localStorage.setItem('barber_combos', JSON.stringify(combos));
+  }, [combos]);
 
   useEffect(() => {
     localStorage.setItem('barber_service_config', JSON.stringify(serviceConfig));
@@ -475,7 +493,8 @@ const App: React.FC = () => {
         transactions,
         products,
         serviceConfig,
-        cardFees
+        cardFees,
+        combos
       });
       
       setLastSyncTime(new Date());
@@ -672,6 +691,66 @@ const App: React.FC = () => {
     });
     
     showToast('SERVIÇO CONCLUÍDO E LANÇADO NO CAIXA!');
+  };
+
+  // --- COMBO HANDLERS ---
+  const handleSaveCombo = (combo: Combo) => {
+    // Verificar se é um novo combo (id não existe na lista atual)
+    const isNew = !combos.find(c => c.id === combo.id);
+
+    if (syncEnabled) {
+      saveCombo(combo).catch(console.error);
+    }
+
+    if (isNew && combo.price > 0) {
+      handleSaveTransaction({
+        description: `COMBO: ${combo.comboName} (${combo.clientName})`,
+        amount: combo.price,
+        type: 'INCOME',
+        category: 'COMBO',
+        paymentMethod: 'PIX', // Default PIX, pode ser editado depois
+        date: getTodayStr()
+      });
+    }
+
+    setCombos(prev => {
+      const exists = prev.find(c => c.id === combo.id);
+      if (exists) return prev.map(c => c.id === combo.id ? combo : c);
+      return [...prev, combo];
+    });
+    showToast(isNew ? 'COMBO ATIVADO E LANÇADO NO CAIXA!' : 'COMBO ATUALIZADO!');
+  };
+
+  const handleDeleteCombo = (id: string) => {
+    if (confirm('DESEJA EXCLUIR ESTE COMBO?')) {
+      if (syncEnabled) {
+        deleteComboFromFirebase(id).catch(console.error);
+      }
+      setCombos(prev => prev.filter(c => c.id !== id));
+      showToast('COMBO EXCLUÍDO!');
+    }
+  };
+
+  const handleUseComboCut = (comboId: string) => {
+    const combo = combos.find(c => c.id === comboId);
+    if (!combo) return;
+    if (combo.usedCuts >= combo.totalCuts) {
+      alert('TODOS OS CORTES DESTE COMBO JÁ FORAM UTILIZADOS!');
+      return;
+    }
+
+    const updatedCombo: Combo = {
+      ...combo,
+      usedCuts: combo.usedCuts + 1,
+      history: [
+        ...combo.history,
+        { date: getTodayStr(), description: `CORTE Nº ${combo.usedCuts + 1}` }
+      ],
+      status: combo.usedCuts + 1 === combo.totalCuts ? 'FINALIZADO' : 'ATIVO'
+    };
+
+    handleSaveCombo(updatedCombo);
+    showToast('CORTE DO COMBO UTILIZADO!');
   };
 
   // --- ANALYTICS CALCULATIONS ---
@@ -1128,6 +1207,16 @@ const App: React.FC = () => {
           />
         )}
 
+        {/* --- ABA COMBOS --- */}
+        {activeTab === 'combos' && (
+          <CombosTab 
+            combos={combos}
+            onSave={handleSaveCombo}
+            onDelete={handleDeleteCombo}
+            onUseCut={handleUseComboCut}
+          />
+        )}
+
         {activeTab === 'inventory' && (
           <div className="space-y-6 animate-in slide-in-from-right duration-300">
             <div className="flex justify-between items-center px-1">
@@ -1318,6 +1407,7 @@ const App: React.FC = () => {
           { id: 'dashboard', label: 'INÍCIO', icon: Wallet },
           { id: 'agenda', label: 'AGENDA', icon: Calendar },
           { id: 'history', label: 'CAIXA', icon: History },
+          { id: 'combos', label: 'COMBOS', icon: Scissors },
           { id: 'reports', label: 'DADOS', icon: BarChart3 },
           { id: 'inventory', label: 'ESTOQUE', icon: Package }
         ].map(item => (
