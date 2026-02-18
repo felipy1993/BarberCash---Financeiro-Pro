@@ -709,7 +709,7 @@ const App: React.FC = () => {
         type: 'INCOME',
         category: 'COMBO',
         paymentMethod: 'PIX', // Default PIX, pode ser editado depois
-        date: getTodayStr()
+        date: combo.purchaseDate
       });
     }
 

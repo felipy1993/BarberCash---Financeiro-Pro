@@ -23,16 +23,19 @@ interface CombosTabProps {
 export const CombosTab: React.FC<CombosTabProps> = ({ combos, onSave, onDelete, onUseCut }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'ATIVO' | 'FINALIZADO'>('ATIVO');
   const [formData, setFormData] = useState({
     clientName: '',
     comboName: '',
     totalCuts: 4,
-    price: ''
+    price: '',
+    purchaseDate: new Date().toISOString().split('T')[0]
   });
 
   const filteredCombos = combos.filter(c => 
+    c.status === activeFilter &&
     c.clientName.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => a.status === 'FINALIZADO' ? 1 : -1);
+  ).sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,13 +46,19 @@ export const CombosTab: React.FC<CombosTabProps> = ({ combos, onSave, onDelete, 
       totalCuts: Number(formData.totalCuts),
       usedCuts: 0,
       price: Number(formData.price) || 0,
-      purchaseDate: new Date().toISOString().split('T')[0],
+      purchaseDate: formData.purchaseDate,
       history: [],
       status: 'ATIVO'
     };
     onSave(newCombo);
     setIsModalOpen(false);
-    setFormData({ clientName: '', comboName: '', totalCuts: 4, price: '' });
+    setFormData({ 
+      clientName: '', 
+      comboName: '', 
+      totalCuts: 4, 
+      price: '',
+      purchaseDate: new Date().toISOString().split('T')[0]
+    });
   };
 
   return (
@@ -62,6 +71,21 @@ export const CombosTab: React.FC<CombosTabProps> = ({ combos, onSave, onDelete, 
         >
           <UserPlus size={16} />
           <span className="text-[9px] font-black uppercase">NOVO COMBO</span>
+        </button>
+      </div>
+
+      <div className="flex gap-2 p-1 bg-slate-900/50 rounded-2xl border border-white/5">
+        <button 
+          onClick={() => setActiveFilter('ATIVO')}
+          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeFilter === 'ATIVO' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          EM ABERTO
+        </button>
+        <button 
+          onClick={() => setActiveFilter('FINALIZADO')}
+          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeFilter === 'FINALIZADO' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          FINALIZADOS
         </button>
       </div>
 
@@ -156,14 +180,14 @@ export const CombosTab: React.FC<CombosTabProps> = ({ combos, onSave, onDelete, 
         )) : (
           <div className="py-20 text-center opacity-30 flex flex-col items-center gap-4">
             <Clock size={48} />
-            <p className="text-[10px] font-black uppercase tracking-widest">NENHUM COMBO ATIVO</p>
+            <p className="text-[10px] font-black uppercase tracking-widest">NENHUM COMBO {activeFilter === 'ATIVO' ? 'EM ABERTO' : 'FINALIZADO'}</p>
           </div>
         )}
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[200] flex items-center justify-center p-6 animate-in fade-in">
-          <div className="bg-slate-900 w-full max-w-sm rounded-[40px] p-8 border border-white/5 shadow-2xl">
+          <div className="bg-slate-900 w-full max-w-sm rounded-[40px] p-8 border border-white/5 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black text-white uppercase tracking-tighter">VENDER COMBO</h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 bg-slate-800 rounded-full text-slate-400"><Trash2 className="rotate-45" size={18} /></button>
@@ -188,6 +212,16 @@ export const CombosTab: React.FC<CombosTabProps> = ({ combos, onSave, onDelete, 
                   onChange={e => setFormData({...formData, comboName: e.target.value})}
                   placeholder="EX: COMBO MENSAL 4 CORTES"
                   className="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl text-sm font-bold text-white outline-none focus:border-sky-500 uppercase" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase ml-4">DATA DA COMPRA</label>
+                <input 
+                  type="date"
+                  required
+                  value={formData.purchaseDate}
+                  onChange={e => setFormData({...formData, purchaseDate: e.target.value})}
+                  className="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl text-sm font-bold text-white outline-none focus:border-sky-500" 
                 />
               </div>
               <div className="space-y-2">
@@ -236,5 +270,6 @@ export const CombosTab: React.FC<CombosTabProps> = ({ combos, onSave, onDelete, 
         </div>
       )}
     </div>
+
   );
 };
